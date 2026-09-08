@@ -2,6 +2,7 @@ import { MongoClient } from 'mongodb';
 import { config } from '../config';
 import { EnrichedEvent } from '../schemas/event.schema';
 import { logger } from '../utils/logger';
+import { PreprocessingExplainer, PreprocessingStep } from '../utils/preprocessing-explainer';
 
 export interface ValidationIssue {
   field: string;
@@ -11,6 +12,7 @@ export interface ValidationIssue {
 export class DemoTelemetryService {
   private client: MongoClient | null = null;
   private connected = false;
+  private preprocessingExplainer = PreprocessingExplainer.getInstance();
 
   async connect(): Promise<void> {
     if (!config.telemetry.enabled) {
@@ -58,7 +60,7 @@ export class DemoTelemetryService {
       const pipelineSnapshots = db.collection('pipeline_snapshots');
 
       const timestamp = event.timestamp;
-      const overallScore = 98;
+      const overallScore = 98; // Placeholder - would come from quality engine
       const eventVolume = event.data.recordCount;
 
       await qualityScores.insertOne({
@@ -78,6 +80,8 @@ export class DemoTelemetryService {
           validity: 99,
           uniqueness: 96,
         },
+        // Add preprocessing summary
+        preprocessingSummary: this.preprocessingExplainer.getSummary()
       });
 
       await pipelineSnapshots.updateOne(
@@ -100,6 +104,9 @@ export class DemoTelemetryService {
         },
         { upsert: true }
       );
+
+      // Clear preprocessing steps for next event
+      this.preprocessingExplainer.clear();
     } catch (error) {
       logger.warn('Failed to persist accepted event telemetry', {
         eventId: event.eventId,
@@ -195,6 +202,8 @@ export class DemoTelemetryService {
         createdAt: now,
         timestamp: now,
         sourceIp: sourceIp || 'unknown',
+        // Add preprocessing info for rejected events
+        preprocessingSummary: this.preprocessingExplainer.getSummary()
       });
 
       await anomalies.insertOne({
@@ -204,6 +213,8 @@ export class DemoTelemetryService {
         severity: 0.9,
         detectedAt: now,
         details: errors,
+        // Add preprocessing info
+        preprocessingSummary: this.preprocessingExplainer.getSummary()
       });
 
       if (sourceId !== 'unknown-source') {
@@ -227,10 +238,25 @@ export class DemoTelemetryService {
           { upsert: true }
         );
       }
+
+      // Clear preprocessing steps for next event
+      this.preprocessingExplainer.clear();
     } catch (error) {
       logger.warn('Failed to persist rejected event telemetry', {
         error,
       });
     }
+  }
+
+  /**
+   * Record a preprocessing step for the current event
+   * This should be called by controllers/services during event processing
+   */
+  recordPreprocessingStep(
+    step: PreprocessingStep,
+    description: string,
+    details?: Record<string, any>
+  ): void {
+    this.preprocessingExplainer.recordStep(step, description, details);
   }
 }
