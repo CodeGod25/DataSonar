@@ -7,17 +7,17 @@ aiokafka==0.12.0
 aio-pika==9.5.4
 
 # ML & analytics
-scikit-learn==1.6.1
+scikit-learn==1.7.2
 prophet==1.1.6
-pandas==2.2.3
-numpy==2.2.1
+pandas==2.3.3
+numpy==2.3.2
 
 # Data stores and object storage
 motor==3.7.0
 minio==7.2.12
 
 # Validation & settings
-pydantic==2.10.4
+pydantic>=2.0,<3.0
 pydantic-settings==2.7.1
 
 # Utils
