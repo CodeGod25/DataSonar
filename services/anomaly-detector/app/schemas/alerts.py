@@ -1,4 +1,4 @@
-"""Outgoing anomaly payload schemas."""
+"""Outgoing anomaly alert schema."""
 
 from __future__ import annotations
 
@@ -17,10 +17,6 @@ class AnomalyAlert(BaseModel):
     summary: str
     quality_score: float
     record_count: int
-
-
-class ModelRetrainRequest(BaseModel):
-    source_id: str
 
 
 class SourceStatus(BaseModel):

@@ -1,1 +1,1 @@
-"""Infrastructure adapters for external services."""
+"""Infrastructure adapters — local storage only."""
