@@ -1,53 +1,65 @@
-"""Application configuration loaded from environment variables."""
+"""Application configuration for terminal-only anomaly detector."""
 
-from functools import lru_cache
+from __future__ import annotations
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
+from dataclasses import dataclass, field
+from pathlib import Path
 
 
-class Settings(BaseSettings):
-    """Anomaly detector configuration."""
+@dataclass
+class Settings:
+    """Anomaly detector configuration — terminal mode."""
 
+    # ── General ──────────────────────────────────────────────────────
     SERVICE_NAME: str = "datasonar-anomaly-detector"
-    SERVICE_PORT: int = 8002
-    ENV: str = "development"
     LOG_LEVEL: str = "INFO"
 
-    KAFKA_BROKERS: str = "localhost:9092"
-    KAFKA_CONSUMER_GROUP: str = "anomaly-detector-group"
-    KAFKA_TOPIC_QUALITY_SCORED: str = "datasonar.quality-scores"
+    # ── Model storage ────────────────────────────────────────────────
+    MODEL_DIR: str = ""  # resolved in __post_init__
+    BASELINE_DIR: str = ""  # resolved in __post_init__
 
-    RABBITMQ_URL: str = "amqp://datasonar:datasonar_secret@localhost:5672/datasonar"
-    RABBITMQ_EXCHANGE: str = "alerts.exchange"
-    RABBITMQ_ROUTING_KEY: str = "alert.anomaly.detected"
-
-    MINIO_ENDPOINT: str = "localhost:9000"
-    MINIO_ACCESS_KEY: str = "datasonar"
-    MINIO_SECRET_KEY: str = "datasonar_secret"
-    MINIO_SECURE: bool = False
-    MINIO_BUCKET_MODELS: str = "ml-models"
-
-    MONGODB_URI: str = (
-        "mongodb://datasonar:datasonar_secret@localhost:27017/"
-        "datasonar?authSource=admin"
-    )
-    MONGODB_DB_NAME: str = "datasonar"
-
+    # ── ML thresholds ────────────────────────────────────────────────
     ANOMALY_ALERT_THRESHOLD: float = 0.6
-    MODEL_RETRAIN_INTERVAL_SECONDS: int = 3600
     DRIFT_MEAN_DELTA_THRESHOLD: float = 0.1
 
-    model_config = SettingsConfigDict(
-        env_file="../../.env",
-        case_sensitive=True,
-        extra="ignore",
+    # ── Training parameters ──────────────────────────────────────────
+    PRETRAIN_PROFILES: list[str] = field(
+        default_factory=lambda: ["stable", "volatile", "degrading"]
     )
+    MIN_TRAINING_ROWS: int = 50
+    ISO_FOREST_ESTIMATORS: int = 100
+    ISO_FOREST_CONTAMINATION: float = 0.08
+    ISO_FOREST_RANDOM_STATE: int = 42
 
-    @property
-    def kafka_brokers_list(self) -> list[str]:
-        return [item.strip() for item in self.KAFKA_BROKERS.split(",") if item.strip()]
+    # ── Time-series EWMA ─────────────────────────────────────────────
+    EWMA_SPAN: int = 24
+    EWMA_Z_THRESHOLD: float = 3.0
+
+    # ── History limits ───────────────────────────────────────────────
+    QUALITY_HISTORY_LIMIT: int = 1000
+    VOLUME_HISTORY_LIMIT: int = 500
+
+    # ── Batch processing ─────────────────────────────────────────────
+    BATCH_CHUNK_SIZE: int = 50_000
+
+    def __post_init__(self) -> None:
+        project_root = Path(__file__).resolve().parents[2]
+        if not self.MODEL_DIR:
+            self.MODEL_DIR = str(project_root / "models" / "trained")
+        if not self.BASELINE_DIR:
+            self.BASELINE_DIR = str(project_root / "models" / "baselines")
+        # Ensure directories exist
+        os.makedirs(self.MODEL_DIR, exist_ok=True)
+        os.makedirs(self.BASELINE_DIR, exist_ok=True)
 
 
-@lru_cache
+# Module-level singleton
+_settings: Settings | None = None
+
+
 def get_settings() -> Settings:
-    return Settings()
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings
