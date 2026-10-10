@@ -3,10 +3,8 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-COPY prisma/ ./prisma/
 
 RUN npm ci
-RUN npx prisma generate
 
 COPY tsconfig.json ./
 COPY src/ ./src/
@@ -22,9 +20,8 @@ RUN addgroup -g 1001 -S datasonar && \
     adduser -S datasonar -u 1001
 
 COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/prisma ./prisma
 
-RUN npm ci --only=production && npx prisma generate && npm cache clean --force
+RUN npm ci --only=production && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
 

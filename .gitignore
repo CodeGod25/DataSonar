@@ -49,6 +49,8 @@ services/dashboard-api/src/generated/
 *.pkl
 *.h5
 *.pt
+*.joblib
+*.pickle
 !services/anomaly-detector/models/trained/.gitkeep
 
 # Terraform
