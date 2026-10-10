@@ -42,6 +42,7 @@ export const EnrichedEventSchema = PipelineEventSchema.extend({
   receivedAt: z.string().datetime(),
   ingestionService: z.string(),
   validationStatus: z.enum(['valid', 'invalid']),
+  schemaVersion: z.string().default('1.0'),
 });
 
 export type EnrichedEvent = z.infer<typeof EnrichedEventSchema>;

@@ -31,4 +31,10 @@ export const config = {
       'mongodb://datasonar:datasonar_secret@localhost:27018/datasonar?authSource=admin',
     mongoDbName: process.env.INGESTION_TELEMETRY_MONGODB_DB_NAME || 'datasonar',
   },
+  // Optional metrics configuration
+  metrics: {
+    enabled: ['1', 'true', 'yes', 'on'].includes(
+      String(process.env.INGESTION_METRICS_ENABLED || 'true').toLowerCase()
+    ),
+  },
 } as const;
